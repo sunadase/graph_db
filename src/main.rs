@@ -28,15 +28,13 @@ fn main() {
         println!("{}", graph);
         graph.add_node("you");
         println!("{}", graph);
-
-        //cannot borrow data in a `&` reference as mutable: cannot borrow as mutable
-        // graph
-        //     .get_node_by_alias("you")
-        //     .expect("Failed getting node you")
-        //     .add_label("Person")
-        //     .expect("Failed adding label")
-        //     .add_prop("name", "elma")
-        //     .expect("Failed adding prop");
+        graph
+            .get_node_mut_by_alias("you")
+            .expect("Failed getting node you")
+            .add_label("Person")
+            .expect("Failed adding label")
+            .add_prop("name", "elma")
+            .expect("Failed adding prop");
         graph.add_node("n");
         println!("{}", graph);
         graph.add_node("friend");

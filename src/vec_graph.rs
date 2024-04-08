@@ -1,5 +1,5 @@
 use core::fmt;
-use std::{borrow::{Borrow, BorrowMut}, collections::HashMap};
+use std::{borrow::{Borrow, BorrowMut}, collections::HashMap, hash::Hash};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, PartialOrd, Ord)]
 pub struct NodeIndex(usize);
@@ -49,19 +49,19 @@ impl Node {
             props: HashMap::new(),
         }
     }
-    pub fn add_label(&mut self, label: &str) -> Result<&Self, String> {
+    pub fn add_label(&mut self, label: &str) -> Result<&mut Self, String> {
         self.labels.push(label.to_owned());
         Ok(self)
     }
-    pub fn remove_label(&mut self, label: &str) -> Result<&Self, String> {
+    pub fn remove_label(&mut self, label: &str) -> Result<&mut Self, String> {
         self.labels.retain(|x| x != label);
         Ok(self)
     }
-    pub fn add_prop(&mut self, key: &str, val: &str) -> Result<&Self, String> {
+    pub fn add_prop(&mut self, key: &str, val: &str) -> Result<&mut Self, String> {
         self.props.insert(key.to_owned(), val.to_owned());
         Ok(self)
     }
-    pub fn remove_prop(&mut self, key: &str) -> Result<&Self, String> {
+    pub fn remove_prop(&mut self, key: &str) -> Result<&mut Self, String> {
         self.props.remove(key);
         Ok(self)
     }
@@ -81,16 +81,40 @@ impl fmt::Display for Node {
     }
 }
 
+//struct AliasMap(HashMap<String, NodeIndex>);
+
+struct AliasMap {
+    inner: HashMap<String, NodeIndex>
+}
+impl From<HashMap<String, NodeIndex>> for AliasMap {
+    fn from(value: HashMap<String, NodeIndex>) -> Self {
+        AliasMap{inner:value}
+    }
+}
+
+impl AliasMap {
+    fn insert(&mut self, key:String, value:NodeIndex) -> Option<NodeIndex>{
+        self.inner.insert(key, value)
+    }
+    fn get(&self, key:&str) -> Option<&NodeIndex> {
+        self.inner.get(key)
+    }
+    fn remove(&mut self, key:&str) -> Option<NodeIndex>{
+        self.inner.remove(key)
+    }
+}
+
 pub struct Graph {
-    aliases: HashMap<String, NodeIndex>,
+    aliases: AliasMap,
     nodes: Vec<Node>,
+    //nodes: HashMap<String, Node>
     edges: Vec<Edge>,
 }
 
 impl Graph {
     pub fn new() -> Self {
         Graph {
-            aliases: HashMap::new(),
+            aliases: HashMap::new().into(),
             nodes: Vec::new(),
             edges: Vec::new(),
         }
@@ -102,12 +126,18 @@ impl Graph {
             .push(Node::new(self.nodes.len().into(), alias.to_owned()));
     }
     pub fn remove_node_by_id(&mut self, id: &NodeIndex) {
-        self.remove_alias_by_id(id);
-        //alias removeing has to be before removing of the node
-        //because function looks up the alias thru the node at nodes
-        self.nodes.retain(|x| x.id.borrow() != id);
+        let node = self.nodes.remove(id.0);
+        //remove shifts over remaining elements so id assigning should be ok
+        self.aliases.remove(&node.alias);
         self.remove_all_edges_from(id);
         self.remove_all_edges_to(id);
+    }
+    pub fn get_node_mut_by_idx(&mut self, idx: &NodeIndex) -> Option<&mut Node> {
+        self.nodes.get_mut(idx.0)
+    }
+    pub fn get_node_mut_by_alias(&mut self, alias: &str) -> Option<&mut Node> {
+        let id = self.aliases.get(alias)?;
+        self.nodes.get_mut(id.0)
     }
     pub fn get_node_by_idx(&self, idx: &NodeIndex) -> Option<&Node> {
         self.nodes.get(idx.0)
@@ -123,10 +153,6 @@ impl Graph {
     }
     pub fn get_id_by_alias(&self, alias: &str) -> Option<&NodeIndex> {
         self.aliases.get(alias)
-    }
-    fn remove_alias_by_id(&mut self, id: &NodeIndex) {
-        let a = self.get_alias_by_id(id).expect("Failed getting alias by id").to_owned();
-        self.aliases.remove(&a);
     }
     pub fn add_edge(&mut self, relation: &str, from: NodeIndex, to: NodeIndex) {
         self.edges.push(Edge::new(relation, from, to))
