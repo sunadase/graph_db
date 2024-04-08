@@ -10,7 +10,7 @@ missing:
 - tests
 - some methods only available from graph or node: weird design
 - [couldnt fix this](/src/vec_graph.rs#L127) seemed to work? when i wrap HashMap in another struct based on [this](https://rust-unofficial.github.io/patterns/patterns/structural/compose-structs.html): AliasMap(Hashmap<..>) but i need to impl/wrap all used hashmap funcs?
-- can't get a node from graph and mutate it and chain funcs?
+- add_props/add_label dysfunctional: can't get a node from graph and mutate it and chain funcs?
 ```rust 
 //cannot borrow data in a `&` reference as mutable: cannot borrow as mutable
 graph
