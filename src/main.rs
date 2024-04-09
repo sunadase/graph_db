@@ -20,7 +20,7 @@
 mod unsafe_graph;
 mod vec_graph;
 
-fn main() {
+fn main() -> vec_graph::GraphResult<()> {
     {
         use vec_graph::Graph;
 
@@ -53,5 +53,18 @@ fn main() {
                 .id,
         );
         println!("{}", graph);
+
+        graph.add_node("ben")?
+        .add_node("o")?
+        .add_node("onlar")?
+        .add_edge_by_aliases("ait", "o", "onlar")?
+        .add_edge_by_aliases("knows", "ben", "o")?
+        .add_edge_by_aliases("knows", "o", "onlar")?
+        .add_edge_by_aliases("knows", "onlar", "o")?;
+
+        println!("{}", graph);
+
+        println!("my neighbours: {:?}", graph.get_neighbors_of("ben")?);
+        Ok(())
     }
 }

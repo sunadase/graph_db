@@ -32,6 +32,7 @@ impl Edge {
     }
 }
 
+#[derive(Debug)]
 pub struct Node {
     pub id: NodeIndex,
     pub alias: String,
@@ -119,18 +120,25 @@ impl Graph {
             edges: Vec::new(),
         }
     }
-    pub fn add_node(&mut self, alias: &str) {
+    pub fn add_node(&mut self, alias: &str) -> GraphResult<&mut Self> {
         self.aliases
             .insert(alias.to_owned(), self.nodes.len().into());
         self.nodes
             .push(Node::new(self.nodes.len().into(), alias.to_owned()));
+        Ok(self)
     }
-    pub fn remove_node_by_id(&mut self, id: &NodeIndex) {
+    pub fn remove_node_by_id(&mut self, id: &NodeIndex) -> GraphResult<&mut Self> {
+        if self.nodes.len() < id.0 {
+            Err(format!("There are {} nodes but tried to index at {}", self.nodes.len(), id.0).into())
+        } else {
+
         let node = self.nodes.remove(id.0);
         //remove shifts over remaining elements so id assigning should be ok
         self.aliases.remove(&node.alias);
-        self.remove_all_edges_from(id);
-        self.remove_all_edges_to(id);
+        self.remove_all_edges_from(id)?;
+        self.remove_all_edges_to(id)?;
+        Ok(self)
+    }
     }
     pub fn get_node_mut_by_idx(&mut self, idx: &NodeIndex) -> Option<&mut Node> {
         self.nodes.get_mut(idx.0)
@@ -154,24 +162,46 @@ impl Graph {
     pub fn get_id_by_alias(&self, alias: &str) -> Option<&NodeIndex> {
         self.aliases.get(alias)
     }
-    pub fn add_edge(&mut self, relation: &str, from: NodeIndex, to: NodeIndex) {
-        self.edges.push(Edge::new(relation, from, to))
+    pub fn add_edge(&mut self, relation: &str, from: NodeIndex, to: NodeIndex) -> GraphResult<&mut Self> {
+        self.edges.push(Edge::new(relation, from, to));
+        Ok(self)
     }
-    pub fn add_edge_by_aliases(&mut self, relation: &str, from: &str, to: &str) {
+    pub fn add_edge_by_aliases(&mut self, relation: &str, from: &str, to: &str) -> GraphResult<&mut Self> {
         let fid = self.get_id_by_alias(from);
         let tid = self.get_id_by_alias(to);
         match (fid, tid) {
-            (Some(f), Some(t)) => self
+            (Some(f), Some(t)) => {self
                 .edges
-                .push(Edge::new(relation, f.to_owned(), t.to_owned())),
-            _ => {}
+                .push(Edge::new(relation, f.to_owned(), t.to_owned()));
+                Ok(self)
+            },
+            _ => {
+                Err(format!("Failed finding from node: {:?}, to node: {:?}", fid, tid).into())
+            }
         }
     }
-    pub fn remove_all_edges_from(&mut self, from: &NodeIndex) {
-        self.edges.retain(|x| x.from.borrow() != from)
+    pub fn remove_all_edges_from(&mut self, from: &NodeIndex) -> GraphResult<&mut Self> {
+        self.edges.retain(|x| x.from.borrow() != from);
+        Ok(self)
     }
-    pub fn remove_all_edges_to(&mut self, to: &NodeIndex) {
-        self.edges.retain(|x| x.to.borrow() != to)
+    pub fn remove_all_edges_to(&mut self, to: &NodeIndex) -> GraphResult<&mut Self> {
+        self.edges.retain(|x| x.to.borrow() != to);
+        Ok(self)
+    }
+    pub fn get_neighbors_of(&self, alias: &str) -> GraphResult<Vec<&Node>> {
+        if let Some(id) = self.aliases.get(alias) {
+            let mut nodes = Vec::new();
+            for e in self.edges.iter() {
+                if &e.from == id {
+                    self.get_node_by_idx(&e.to).map(|x| {
+                        nodes.push(x)
+                    });        
+                }
+            }
+            Ok(nodes)
+        } else {
+            Err(format!("Failed finding an id for alias: {}", alias).into())
+        }
     }
 }
 
@@ -196,3 +226,17 @@ impl fmt::Display for Graph {
         Ok(())
     }
 }
+
+#[derive(Debug)]
+pub enum Error {
+    Text(String),
+}
+
+impl From<String> for Error {
+    fn from(value: String) -> Self {
+        Error::Text(value)
+    }
+}
+
+
+pub type GraphResult<T> = Result<T, Error>;

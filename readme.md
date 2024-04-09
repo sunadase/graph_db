@@ -5,7 +5,7 @@
 
 missing:
 - search?
-- \> find by label/props
+- \> find by label/props 
 - Errors/Result
 - tests
 - some methods only available from graph or node: weird design
