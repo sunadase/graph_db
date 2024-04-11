@@ -18,6 +18,7 @@ missing:
 
 - bug: node_get uses index but index changes with remove, the rest(aliasmap, nodes) use ids which are equal to index at node creation but diverge after indexes slide by a node remove
     - \> either dont slide after remove (swap_remove), or check ids on node lookup (since index only slides left on removes? if the id at index doesnt match iterate backwards till find the match?)
+        - \> no point in using indexes if not utilizing its hash-likeness
 
 [rc graph](/src/rc_graph.rs)
 - wip
