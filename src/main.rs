@@ -1,3 +1,5 @@
+mod unsafe_graph;
+pub mod vec_graph;
 ///MATCH (you:Person {name:"elma"})-[:KNOWS]->(n)-[:KNOWS]->(friend:Person {name:"armut"})
 //RETURN n
 
@@ -16,8 +18,7 @@
 //),
 
 //mod rc_graph;
-mod unsafe_graph;
-pub mod vec_graph;
+mod vgraph;
 
 fn main() -> vec_graph::GraphResult<()> {
     {
