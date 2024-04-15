@@ -115,12 +115,17 @@ fn node_remove() {
         .unwrap()
         .clone();
 
+    println!("pre remove graph:\n{}",graph1);
+    println!("{:#?}",graph1.aliases);
     graph1.remove_node_by_id(&did).unwrap();
+    
+    println!("post remove graph:\n{}",graph1);
+    println!("{:#?}",graph1.aliases);
 
     let veli = *graph1.get_nodes_by_alias("veli").unwrap().first().unwrap();
     let kkk = *graph1.get_nodes_by_alias("kkk").unwrap().first().unwrap();
-    //let sss = *graph1.get_nodes_by_alias("sss").unwrap().first().unwrap();
+    let sss = *graph1.get_nodes_by_alias("sss").unwrap().first().unwrap();
     assert_eq!(veli, &Node::new(1.into(), "veli".to_owned()));
-    assert_eq!(kkk, &Node::new(2.into(), "kkk".to_owned()));
-    //assert_eq!(sss, &Node::new(4.into(), "sss".to_owned()));
+    assert_eq!(kkk, &Node::new(3.into(), "kkk".to_owned()));
+    assert_eq!(sss, &Node::new(2.into(), "sss".to_owned()));
 }

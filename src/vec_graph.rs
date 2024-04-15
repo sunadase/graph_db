@@ -99,7 +99,7 @@ impl fmt::Display for Node {
 //struct AliasMap(HashMap<String, NodeIndex>);
 
 #[derive(Debug, PartialEq, Eq)]
-struct AliasMap {
+pub struct AliasMap {
     inner: HashMap<String, Vec<NodeIndex>>,
 }
 impl From<HashMap<String, Vec<NodeIndex>>> for AliasMap {
@@ -110,13 +110,15 @@ impl From<HashMap<String, Vec<NodeIndex>>> for AliasMap {
 
 impl AliasMap {
     //better return type?
-    fn insert(&mut self, key: &str, value: NodeIndex) -> Option<()> {
+    fn insert(&mut self, key: &str, value: NodeIndex) -> Option<Vec<NodeIndex>> {
         match self.inner.get_mut(key) {
             None => {
-                self.inner.insert(key.to_owned(), vec![value]);
-                Some(())
+                self.inner.insert(key.to_owned(), vec![value])
             }
-            Some(x) => Some(x.push(value)),
+            Some(x) => {
+                x.push(value);
+                None
+            }
         }
     }
     fn get(&self, key: &str) -> Option<&Vec<NodeIndex>> {
@@ -125,8 +127,17 @@ impl AliasMap {
     fn remove_all(&mut self, key: &str) -> Option<Vec<NodeIndex>> {
         self.inner.remove(key)
     }
-    fn remove_at(&mut self, key: &str, idx: &NodeIndex) -> Option<()> {
+    fn remove_id_at(&mut self, key: &str, idx: &NodeIndex) -> Option<()> {
         self.inner.get_mut(key)?.retain(|x| x.0 != idx.0);
+        Some(())
+    }
+    fn change_id_at(&mut self, key: &str, old_idx:&NodeIndex, mut new_idx: NodeIndex) -> Option<()> {
+        for idx in self.inner.get_mut(key)?.iter_mut() {
+            if idx == old_idx { 
+                *idx = new_idx;
+            }
+        }
+
         Some(())
     }
     fn retain_at<F>(&mut self, key: &str, mut f: F) -> Option<()>
@@ -140,7 +151,7 @@ impl AliasMap {
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct Graph {
-    aliases: AliasMap,
+    pub aliases: AliasMap,
     nodes: Vec<Node>,
     //nodes: HashMap<String, Node>
     edges: Vec<Edge>,
@@ -170,11 +181,30 @@ impl Graph {
             )
             .into())
         } else {
-            let node = self.nodes.remove(id.0);
+            // let node = self.nodes.remove(id.0);
             //remove shifts over remaining elements so id assigning should be ok
-            self.aliases.remove_at(&node.alias, id);
+            let node = self.nodes.swap_remove(id.0);
+            //swaps id with last, removes and gets id, last is now id
+            //remove node from other records
+            self.aliases.remove_id_at(&node.alias, id);
             self.remove_all_edges_from(id)?;
             self.remove_all_edges_to(id)?;
+            //swap lasts new id
+            if let Some(last) = self.nodes.get_mut(id.0) {
+                //last's alias will point to its old id
+                self.aliases.change_id_at(&last.alias, &last.id,  id.to_owned());
+                //swap all edges from and to last's old id to its new id
+                self.edges.iter_mut().map(|edge|{
+                    if edge.from == last.id { edge.from = last.id }
+                    if edge.to == last.id { edge.to = last.id }
+                });
+                //change its inner id to its new id
+                last.id = id.to_owned();
+            } else {
+                // no last node -> there was only 1 node?
+            };
+
+
             Ok(self)
         }
     }
