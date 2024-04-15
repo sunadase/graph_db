@@ -7,6 +7,7 @@ missing:
 - search?
 - \> find by label/props 
 - tests
+    - \> more + edges relations removes + same alias
 - some methods only available from graph or node: weird design
     - being able to get/search nodes and retrieve them but not being able to add edges directly from them (need to pass their and targets id/alias to graph.add_edge()) is ugly
         - \> Weak ref to parent?
@@ -21,6 +22,10 @@ missing:
         - \> i chose this 
     - \> or check ids on node lookup (since index only slides left on removes? if the id at index doesnt match iterate backwards till find the match?)
         - \> no point in using indexes if not utilizing its hash-likeness
+
+[vgraph](/src/vgraph.rs)
+- vector graph but relations are stored in nodes as vec of outgoing edges(to, relation:str)
+- wip
 
 [rc graph](/src/rc_graph.rs)
 - wip
