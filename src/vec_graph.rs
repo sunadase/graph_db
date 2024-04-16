@@ -225,7 +225,7 @@ impl Graph {
         let idxs = self.aliases.get(alias)?;
         let mut mut_node_iter = self.nodes.iter_mut();
         let mut nodes = Vec::with_capacity(idxs.len());
-        
+
         // idxs.iter().for_each(|id| nodes.push(self.nodes.get_mut(id.0)));
         // idxs.iter().for_each(|id| nodes.push(self.nodes.get_mut(id.0).expect("Idx returned by alias was out of bounds?")));
 
@@ -292,8 +292,9 @@ impl Graph {
             .get_ids_by_alias(to)
             .ok_or(format!("Failed getting ids with {}", from))?
             .clone();
-        for (f, t) in fid.iter().zip(tid.iter()){
-            self.edges.push(Edge::new(relation, f.to_owned(), t.to_owned()))
+        for (f, t) in fid.iter().zip(tid.iter()) {
+            self.edges
+                .push(Edge::new(relation, f.to_owned(), t.to_owned()))
         }
         Ok(self)
     }
@@ -306,16 +307,26 @@ impl Graph {
         Ok(self)
     }
     pub fn get_outgoing_neighbors(&self, node: &Node) -> GraphResult<Vec<&Node>> {
-        Ok(self.edges.iter()
-        .filter(|e| e.from == node.id)
-        .map(|e| self.get_node_by_idx(&e.to).expect("Outgoing edge has invalid target(to) node index"))
-        .collect())
+        Ok(self
+            .edges
+            .iter()
+            .filter(|e| e.from == node.id)
+            .map(|e| {
+                self.get_node_by_idx(&e.to)
+                    .expect("Outgoing edge has invalid target(to) node index")
+            })
+            .collect())
     }
     pub fn get_incoming_neighbors(&self, node: &Node) -> GraphResult<Vec<&Node>> {
-        Ok(self.edges.iter()
-        .filter(|e| e.to == node.id)
-        .map(|e| self.get_node_by_idx(&e.from).expect("Incoming edge has invalid source(from) node index"))
-        .collect())
+        Ok(self
+            .edges
+            .iter()
+            .filter(|e| e.to == node.id)
+            .map(|e| {
+                self.get_node_by_idx(&e.from)
+                    .expect("Incoming edge has invalid source(from) node index")
+            })
+            .collect())
     }
 }
 
