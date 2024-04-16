@@ -115,12 +115,12 @@ fn node_remove() {
         .unwrap()
         .clone();
 
-    println!("pre remove graph:\n{}",graph1);
-    println!("{:#?}",graph1.aliases);
+    println!("pre remove graph:\n{}", graph1);
+    println!("{:#?}", graph1.aliases);
     graph1.remove_node_by_id(&did).unwrap();
-    
-    println!("post remove graph:\n{}",graph1);
-    println!("{:#?}",graph1.aliases);
+
+    println!("post remove graph:\n{}", graph1);
+    println!("{:#?}", graph1.aliases);
 
     let veli = *graph1.get_nodes_by_alias("veli").unwrap().first().unwrap();
     let kkk = *graph1.get_nodes_by_alias("kkk").unwrap().first().unwrap();

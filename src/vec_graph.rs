@@ -64,20 +64,21 @@ impl Node {
             props: HashMap::new(),
         }
     }
-    pub fn add_label(&mut self, label: &str) -> GraphResult<&mut Self> {
-        self.labels.push(label.to_owned());
+    pub fn add_label<S: AsRef<str>>(&mut self, label: S) -> GraphResult<&mut Self> {
+        self.labels.push(label.as_ref().to_owned());
         Ok(self)
     }
-    pub fn remove_label(&mut self, label: &str) -> GraphResult<&mut Self> {
-        self.labels.retain(|x| x != label);
+    pub fn remove_label<S: AsRef<str>>(&mut self, label: S) -> GraphResult<&mut Self> {
+        self.labels.retain(|x| x != label.as_ref());
         Ok(self)
     }
-    pub fn add_prop(&mut self, key: &str, val: &str) -> GraphResult<&mut Self> {
-        self.props.insert(key.to_owned(), val.to_owned());
+    pub fn add_prop<S: AsRef<str>>(&mut self, key: S, val: S) -> GraphResult<&mut Self> {
+        self.props
+            .insert(key.as_ref().to_owned(), val.as_ref().to_owned());
         Ok(self)
     }
-    pub fn remove_prop(&mut self, key: &str) -> GraphResult<&mut Self> {
-        self.props.remove(key);
+    pub fn remove_prop<S: AsRef<str>>(&mut self, key: S) -> GraphResult<&mut Self> {
+        self.props.remove(key.as_ref());
         Ok(self)
     }
 }
@@ -112,9 +113,7 @@ impl AliasMap {
     //better return type?
     fn insert(&mut self, key: &str, value: NodeIndex) -> Option<Vec<NodeIndex>> {
         match self.inner.get_mut(key) {
-            None => {
-                self.inner.insert(key.to_owned(), vec![value])
-            }
+            None => self.inner.insert(key.to_owned(), vec![value]),
             Some(x) => {
                 x.push(value);
                 None
@@ -131,13 +130,17 @@ impl AliasMap {
         self.inner.get_mut(key)?.retain(|x| x.0 != idx.0);
         Some(())
     }
-    fn change_id_at(&mut self, key: &str, old_idx:&NodeIndex, mut new_idx: NodeIndex) -> Option<()> {
-        for idx in self.inner.get_mut(key)?.iter_mut() {
-            if idx == old_idx { 
-                *idx = new_idx;
-            }
-        }
-
+    fn change_id_at(
+        &mut self,
+        key: &str,
+        old_idx: &NodeIndex,
+        mut new_idx: NodeIndex,
+    ) -> Option<()> {
+        self.inner
+            .get_mut(key)?
+            .iter_mut()
+            .filter(|idx| *idx == old_idx)
+            .for_each(|idx| *idx = new_idx);
         Some(())
     }
     fn retain_at<F>(&mut self, key: &str, mut f: F) -> Option<()>
@@ -192,18 +195,22 @@ impl Graph {
             //swap lasts new id
             if let Some(last) = self.nodes.get_mut(id.0) {
                 //last's alias will point to its old id
-                self.aliases.change_id_at(&last.alias, &last.id,  id.to_owned());
+                self.aliases
+                    .change_id_at(&last.alias, &last.id, id.to_owned());
                 //swap all edges from and to last's old id to its new id
-                self.edges.iter_mut().map(|edge|{
-                    if edge.from == last.id { edge.from = last.id }
-                    if edge.to == last.id { edge.to = last.id }
+                self.edges.iter_mut().for_each(|edge| {
+                    if edge.from == last.id {
+                        edge.from = last.id
+                    }
+                    if edge.to == last.id {
+                        edge.to = last.id
+                    }
                 });
                 //change its inner id to its new id
                 last.id = id.to_owned();
             } else {
                 // no last node -> there was only 1 node?
             };
-
 
             Ok(self)
         }
@@ -215,26 +222,17 @@ impl Graph {
         self.nodes.get_mut(idx.0)
     }
     pub fn get_nodes_mut_by_alias(&mut self, alias: &str) -> Option<Vec<&mut Node>> {
-        //mutable?
-        let id = self.aliases.get(alias)?;
-
+        let idxs = self.aliases.get(alias)?;
         let mut mut_node_iter = self.nodes.iter_mut();
-        let mut nodes = Vec::with_capacity(id.len());
-        for i in id {
-            nodes.push(mut_node_iter.nth(i.0)?)
+        let mut nodes = Vec::with_capacity(idxs.len());
+        
+        // idxs.iter().for_each(|id| nodes.push(self.nodes.get_mut(id.0)));
+        // idxs.iter().for_each(|id| nodes.push(self.nodes.get_mut(id.0).expect("Idx returned by alias was out of bounds?")));
+
+        for id in idxs {
+            nodes.push(mut_node_iter.nth(id.0)?)
         }
-
         return Some(nodes);
-
-        // let mut nodes = Vec::new();
-        // for i in id.iter() {
-        //     nodes.push(self.nodes.get_mut(i.0)?) //questionmark? dangerous?
-        // }
-        // if nodes.len() == 0 {
-        //     return None
-        // } else {
-        //     return Some(nodes)
-        // }
     }
     pub fn get_last_node(&mut self) -> Option<&Node> {
         self.nodes.last()
@@ -254,13 +252,13 @@ impl Graph {
     }
     pub fn get_nodes_by_alias(&self, alias: &str) -> Option<Vec<&Node>> {
         let id = self.aliases.get(alias)?;
-        let mut nodes = Vec::new();
-        for i in id.iter() {
-            nodes.push(self.nodes.get(i.0)?) //? dangerous?
-        }
-        if nodes.len() == 0 {
+        if id.len() == 0 {
             return None;
         } else {
+            let mut nodes = Vec::new();
+            for i in id.iter() {
+                nodes.push(self.nodes.get(i.0)?) //? dangerous?
+            }
             return Some(nodes);
         }
     }
@@ -294,11 +292,8 @@ impl Graph {
             .get_ids_by_alias(to)
             .ok_or(format!("Failed getting ids with {}", from))?
             .clone();
-        for f in fid.iter() {
-            for t in tid.iter() {
-                self.edges
-                    .push(Edge::new(relation, f.to_owned(), t.to_owned()));
-            }
+        for (f, t) in fid.iter().zip(tid.iter()){
+            self.edges.push(Edge::new(relation, f.to_owned(), t.to_owned()))
         }
         Ok(self)
     }
@@ -311,22 +306,16 @@ impl Graph {
         Ok(self)
     }
     pub fn get_outgoing_neighbors(&self, node: &Node) -> GraphResult<Vec<&Node>> {
-        let mut nodes = Vec::new();
-        for e in self.edges.iter() {
-            if e.from == node.id {
-                self.get_node_by_idx(&e.to).map(|x| nodes.push(x));
-            }
-        }
-        Ok(nodes)
+        Ok(self.edges.iter()
+        .filter(|e| e.from == node.id)
+        .map(|e| self.get_node_by_idx(&e.to).expect("Outgoing edge has invalid target(to) node index"))
+        .collect())
     }
     pub fn get_incoming_neighbors(&self, node: &Node) -> GraphResult<Vec<&Node>> {
-        let mut nodes = Vec::new();
-        for e in self.edges.iter() {
-            if e.to == node.id {
-                self.get_node_by_idx(&e.from).map(|x| nodes.push(x));
-            }
-        }
-        Ok(nodes)
+        Ok(self.edges.iter()
+        .filter(|e| e.to == node.id)
+        .map(|e| self.get_node_by_idx(&e.from).expect("Incoming edge has invalid source(from) node index"))
+        .collect())
     }
 }
 

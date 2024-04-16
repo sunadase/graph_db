@@ -76,5 +76,50 @@ https://badboi.dev/rust/2020/07/17/cell-refcell.html
 
 https://smallcultfollowing.com/babysteps/blog/2015/04/06/modeling-graphs-in-rust-using-vector-indices/
 
+```
+struct Graph {
+  nodes: Vec<NodeData>,
+  edges: Vec<EdgeData>,
+}
+type NodeIndex = usize;
+type EdgeIndex = usize;
+struct NodeData {
+  first_outgoing_edge: Option<EdgeIndex>,
+}
+struct EdgeData {
+  target: NodeIndex,
+  next_outgoing_edge: Option<EdgeIndex>
+}
+```
+```
+struct Graph {
+  nodes: Vec<
+    labels:
+    props:
+    first_outgoing: Option<EdgeIndex>
+  >,
+  edges: Vec<
+    target: NodeIndex,
+    next_outgoing: Option<EdgeIndex>
+  >,
+}
+type NodeIndex = usize;
+type EdgeIndex = usize;
+```
+Nodes[(data, edgeindex), (data, edgeindex), (data, edgeindex)]
+Edges[(target, nextedge), (target, nextedge), (target, nextedge)]
+
+
+```
+struct Graph {
+  nodes: Vec<NodeData: (outgoing: Option<EdgeIndex>, 
+                               labels: Vec<Str>, 
+                               props: HashMap<Str,Str>)>
+  edges: Vec<EdgeData: (target: Option<NodeIndex>, 
+                        outgoing: Option<EdgeIndex>)>
+}
+```
+![graph drawing](/media/Untitled.png)
+
 
 [youtube/Are Graphs Hard in Rust?](https://www.youtube.com/watch?v=kGaU5kU-5rw)
