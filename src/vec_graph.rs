@@ -2,6 +2,7 @@ use core::fmt;
 use std::{
     borrow::{Borrow, BorrowMut},
     collections::HashMap,
+    iter::zip,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, PartialOrd, Ord)]
@@ -120,12 +121,15 @@ impl AliasMap {
             }
         }
     }
+    #[inline]
     fn get(&self, key: &str) -> Option<&Vec<NodeIndex>> {
         self.inner.get(key)
     }
+    #[inline]
     fn remove_all(&mut self, key: &str) -> Option<Vec<NodeIndex>> {
         self.inner.remove(key)
     }
+    #[inline]
     fn remove_id_at(&mut self, key: &str, idx: &NodeIndex) -> Option<()> {
         self.inner.get_mut(key)?.retain(|x| x.0 != idx.0);
         Some(())
@@ -143,6 +147,7 @@ impl AliasMap {
             .for_each(|idx| *idx = new_idx);
         Some(())
     }
+    #[inline]
     fn retain_at<F>(&mut self, key: &str, mut f: F) -> Option<()>
     where
         F: FnMut(&NodeIndex) -> bool,
@@ -215,9 +220,7 @@ impl Graph {
             Ok(self)
         }
     }
-    ///TODO: BUG: getting by index is wrong if it depends on
-    /// node ids :. ID assigned at node creation; index changes
-    /// with node removes
+    #[inline]
     pub fn get_node_mut_by_idx(&mut self, idx: &NodeIndex) -> Option<&mut Node> {
         self.nodes.get_mut(idx.0)
     }
@@ -229,14 +232,18 @@ impl Graph {
         // idxs.iter().for_each(|id| nodes.push(self.nodes.get_mut(id.0)));
         // idxs.iter().for_each(|id| nodes.push(self.nodes.get_mut(id.0).expect("Idx returned by alias was out of bounds?")));
 
+        //BUG!?: if idxs are not ordered: since nth() consumes the iterator for previous values result will be incorrect if encountered a higher and lower id
+        // + nth(0) == next(), nth(0).nth(0) == next().next(), nth(15) == [15], nth(15).nth(15) == [30], not [15],[15] so nth()'s after first id are also incorrect
         for id in idxs {
             nodes.push(mut_node_iter.nth(id.0)?)
         }
         return Some(nodes);
     }
+    #[inline]
     pub fn get_last_node(&mut self) -> Option<&Node> {
         self.nodes.last()
     }
+    #[inline]
     pub fn get_last_node_mut(&mut self) -> Option<&mut Node> {
         self.nodes.last_mut()
     }
@@ -247,6 +254,7 @@ impl Graph {
         f(self.nodes.last_mut().ok_or("Failed getting last node")?)?;
         Ok(self)
     }
+    #[inline]
     pub fn get_node_by_idx(&self, idx: &NodeIndex) -> Option<&Node> {
         self.nodes.get(idx.0)
     }
@@ -262,10 +270,12 @@ impl Graph {
             return Some(nodes);
         }
     }
+    #[inline]
     pub fn get_alias_by_id(&self, id: &NodeIndex) -> Option<&str> {
         self.get_node_by_idx(id)
             .and_then(|x| Some(x.alias.as_str()))
     }
+    #[inline]
     pub fn get_ids_by_alias(&self, alias: &str) -> Option<&Vec<NodeIndex>> {
         self.aliases.get(alias)
     }
@@ -292,10 +302,21 @@ impl Graph {
             .get_ids_by_alias(to)
             .ok_or(format!("Failed getting ids with {}", from))?
             .clone();
-        for (f, t) in fid.iter().zip(tid.iter()) {
-            self.edges
-                .push(Edge::new(relation, f.to_owned(), t.to_owned()))
-        }
+        //need product not zip?
+        // fid are all the ids that matched from string [1,2,3]
+        // tid are all the ids that matched to string [4,5,6]
+        // link all source(from) matches to each target(to) match
+        // expected: [(1,4), (1,5), (1,6), (2,4), (2,5), (2,6), (3,4), (3,5), (3,6)]
+        // zip:      [(1,4), (2,5), (3,6)]
+        // for (f, t) in zip(fid, tid) {
+        //     self.edges
+        //         .push(Edge::new(relation, f, t))
+        // }
+        fid.iter().for_each(|f| {
+            tid.iter().for_each(|t| 
+                self.edges.push(Edge::new(relation, *f, *t)))
+        });
+
         Ok(self)
     }
     pub fn remove_all_edges_from(&mut self, from: &NodeIndex) -> GraphResult<&mut Self> {
